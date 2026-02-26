@@ -1,0 +1,33 @@
+{
+  "name": "ntfy-mcp-server",
+  "version": "1.0.0",
+  "description": "A feature-rich MCP server for the ntfy push notification service. Send, fetch, search, and manage notifications from AI agents.",
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "ntfy-mcp-server": "src/index.ts"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir build --target bun",
+    "start": "bun run src/index.ts",
+    "dev": "bun run --watch src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "ntfy",
+    "notifications",
+    "push-notifications",
+    "model-context-protocol",
+    "ai",
+    "llm"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.4",
+    "typescript": "^5.8.2"
+  }
+}
