@@ -167,7 +167,10 @@ export class NtfyClient {
     const topic = this.resolveTopic(options.topic);
     const params = new URLSearchParams();
 
-    params.set("poll", "1");
+    const pollEnabled = options.poll === undefined ? true : options.poll;
+    if (pollEnabled) {
+      params.set("poll", "1");
+    }
 
     if (options.since) params.set("since", options.since);
     else params.set("since", "all");

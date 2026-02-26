@@ -58,35 +58,65 @@ function formatMessage(msg: NtfyMessage): string {
 // Zod schemas for reuse
 // ---------------------------------------------------------------------------
 
-const ActionSchema = z.object({
-  action: z
-    .enum(["view", "http", "broadcast", "copy"])
-    .describe("Action type"),
-  label: z.string().describe("Button label"),
-  url: z.string().optional().describe("URL for view/http actions"),
-  clear: z
-    .boolean()
-    .optional()
-    .describe("Dismiss notification after action"),
-  method: z
-    .string()
-    .optional()
-    .describe("HTTP method for http action (default: POST)"),
-  headers: z
-    .record(z.string())
-    .optional()
-    .describe("HTTP headers for http action"),
-  body: z.string().optional().describe("HTTP body for http action"),
-  intent: z
-    .string()
-    .optional()
-    .describe("Android intent for broadcast action"),
-  extras: z
-    .record(z.string())
-    .optional()
-    .describe("Android extras for broadcast action"),
-  value: z.string().optional().describe("Text to copy for copy action"),
-});
+const ActionSchema = z.discriminatedUnion("action", [
+  z
+    .object({
+      action: z.literal("view").describe("Action type"),
+      label: z.string().describe("Button label"),
+      url: z.string().describe("URL to open"),
+      clear: z
+        .boolean()
+        .optional()
+        .describe("Dismiss notification after action"),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("http").describe("Action type"),
+      label: z.string().describe("Button label"),
+      url: z.string().describe("URL for the HTTP request"),
+      clear: z
+        .boolean()
+        .optional()
+        .describe("Dismiss notification after action"),
+      method: z
+        .string()
+        .optional()
+        .describe("HTTP method (default: POST)"),
+      headers: z
+        .record(z.string())
+        .optional()
+        .describe("HTTP headers"),
+      body: z.string().optional().describe("HTTP request body"),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("broadcast").describe("Action type"),
+      label: z.string().describe("Button label"),
+      intent: z.string().describe("Android broadcast intent"),
+      clear: z
+        .boolean()
+        .optional()
+        .describe("Dismiss notification after action"),
+      extras: z
+        .record(z.string())
+        .optional()
+        .describe("Android intent extras"),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("copy").describe("Action type"),
+      label: z.string().describe("Button label"),
+      value: z.string().describe("Text to copy to clipboard"),
+      clear: z
+        .boolean()
+        .optional()
+        .describe("Dismiss notification after action"),
+    })
+    .strict(),
+]);
 
 const PrioritySchema = z
   .union([
@@ -174,6 +204,7 @@ server.tool(
       .describe("Enable markdown rendering in the message body"),
     actions: z
       .array(ActionSchema)
+      .max(3)
       .optional()
       .describe(
         "Up to 3 action buttons. Types: view (open URL), http (background request), broadcast (Android intent), copy (clipboard)."
@@ -547,7 +578,9 @@ server.tool(
       const parts: string[] = [
         `Server: ${baseUrl}`,
         `Default Topic: ${defaultTopic || "(not set)"}`,
-        `Authentication: ${NTFY_TOKEN ? "Token" : NTFY_USERNAME ? "Basic Auth" : "None"}`,
+        `Authentication: ${
+          NTFY_TOKEN ? "Token" : NTFY_USERNAME && NTFY_PASSWORD ? "Basic Auth" : "None"
+        }`,
       ];
 
       if (info) {
@@ -647,7 +680,7 @@ if (NTFY_TOPIC) {
             {
               topic: NTFY_TOPIC,
               server: NTFY_BASE_URL,
-              authenticated: !!(NTFY_TOKEN || NTFY_USERNAME),
+              authenticated: !!(NTFY_TOKEN || (NTFY_USERNAME && NTFY_PASSWORD)),
               publishUrl: `${NTFY_BASE_URL}/${NTFY_TOPIC}`,
               subscribeUrl: `${NTFY_BASE_URL}/${NTFY_TOPIC}/json`,
               webUrl: `${NTFY_BASE_URL}/${NTFY_TOPIC}`,
