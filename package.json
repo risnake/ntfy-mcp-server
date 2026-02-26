@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "description": "A feature-rich MCP server for the ntfy push notification service. Send, fetch, search, and manage notifications from AI agents.",
   "type": "module",
-  "main": "build/index.js",
+  "main": "src/index.ts",
   "bin": {
-    "ntfy-mcp-server": "build/index.js"
+    "ntfy-mcp-server": "src/index.ts"
   },
   "scripts": {
-    "build": "tsc",
-    "start": "node build/index.js",
-    "dev": "tsc --watch"
+    "build": "bun build src/index.ts --outdir build --target bun",
+    "start": "bun run src/index.ts",
+    "dev": "bun run --watch src/index.ts"
   },
   "keywords": [
     "mcp",
@@ -27,10 +27,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/node": "^22.15.2",
+    "@types/bun": "^1.2.4",
     "typescript": "^5.8.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }

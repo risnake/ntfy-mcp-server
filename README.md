@@ -40,8 +40,7 @@ A feature-rich [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) 
 ## Installation
 
 ```bash
-npm install
-npm run build
+bun install
 ```
 
 ## Configuration
@@ -64,8 +63,8 @@ Add to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "ntfy": {
-      "command": "node",
-      "args": ["/path/to/ntfy-mcp-server/build/index.js"],
+      "command": "bun",
+      "args": ["run", "/path/to/ntfy-mcp-server/src/index.ts"],
       "env": {
         "NTFY_TOPIC": "my-notifications",
         "NTFY_TOKEN": "tk_your_token_here"
@@ -83,8 +82,8 @@ Add to your Claude Code MCP settings:
 {
   "mcpServers": {
     "ntfy": {
-      "command": "node",
-      "args": ["/path/to/ntfy-mcp-server/build/index.js"],
+      "command": "bun",
+      "args": ["run", "/path/to/ntfy-mcp-server/src/index.ts"],
       "env": {
         "NTFY_TOPIC": "my-notifications",
         "NTFY_TOKEN": "tk_your_token_here"
@@ -94,14 +93,14 @@ Add to your Claude Code MCP settings:
 }
 ```
 
-## Usage with npx
+## Usage with bunx
 
 ```json
 {
   "mcpServers": {
     "ntfy": {
-      "command": "npx",
-      "args": ["-y", "ntfy-mcp-server"],
+      "command": "bunx",
+      "args": ["ntfy-mcp-server"],
       "env": {
         "NTFY_TOPIC": "my-notifications"
       }
@@ -165,9 +164,9 @@ Check server status and get configuration details.
 ## Development
 
 ```bash
-npm run dev    # Watch mode
-npm run build  # Production build
-npm start      # Run the server
+bun run dev    # Watch mode with auto-reload
+bun run build  # Production build
+bun start      # Run the server
 ```
 
 ## License
