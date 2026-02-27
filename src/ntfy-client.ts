@@ -294,10 +294,16 @@ export class NtfyClient {
     const timer = setTimeout(() => controller.abort(), options.timeoutMs);
 
     try {
-      const response = await fetch(url, {
+      // Bun's fetch has a default 60s idle socket timeout that fires before our
+      // AbortController on long-running SSE streams. Disable it so the
+      // AbortController timer is the sole timeout mechanism.
+      const fetchInit: RequestInit = {
         headers: this.getAuthHeaders(),
         signal: controller.signal,
-      });
+      };
+      (fetchInit as Record<string, unknown>).timeout = false;
+
+      const response = await fetch(url, fetchInit);
 
       if (!response.ok) {
         const errorText = await response.text();
