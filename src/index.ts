@@ -54,6 +54,15 @@ function formatMessage(msg: NtfyMessage): string {
   return parts.join("\n");
 }
 
+function parseTimeout(timeout: string): number {
+  const match = timeout.trim().match(/^(\d+(?:\.\d+)?)\s*(s|m|h|d)?$/i);
+  if (!match) throw new Error(`Invalid timeout format: "${timeout}". Use e.g. "30m", "1h", "2h".`);
+  const value = parseFloat(match[1]);
+  const unit = (match[2] ?? "m").toLowerCase();
+  const multipliers: Record<string, number> = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 };
+  return value * multipliers[unit];
+}
+
 // ---------------------------------------------------------------------------
 // Zod schemas for reuse
 // ---------------------------------------------------------------------------
@@ -656,6 +665,80 @@ server.tool(
       ],
       isError: errorCount > 0 && successCount === 0,
     };
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool: wait_for_reply
+// ---------------------------------------------------------------------------
+
+server.tool(
+  "wait_for_reply",
+  "Subscribe to a ntfy topic and block until the user sends a reply message. Use this after sending a notification to wait for a response. Returns the reply message or a timeout notice. Claude Code will wait however long needed — the connection stays alive via ntfy keepalives.",
+  {
+    topic: z
+      .string()
+      .optional()
+      .describe("Topic to listen on (defaults to NTFY_TOPIC)"),
+    timeout: z
+      .string()
+      .optional()
+      .describe(
+        "How long to wait for a reply before giving up. Examples: '5m', '30m', '1h', '2h'. Defaults to '1h'."
+      ),
+    context: z
+      .string()
+      .optional()
+      .describe(
+        "Optional description of what you're waiting for, shown in the waiting message (e.g. 'your approval to delete the files')"
+      ),
+  },
+  async (params) => {
+    try {
+      // Parse timeout string into milliseconds
+      const timeoutStr = params.timeout ?? "1h";
+      const timeoutMs = parseTimeout(timeoutStr);
+
+      const sinceTime = Math.floor(Date.now() / 1000);
+      const topic = params.topic || NTFY_TOPIC;
+      const contextNote = params.context ? ` (waiting for: ${params.context})` : "";
+
+      console.error(
+        `[wait_for_reply] Subscribing to topic "${topic}"${contextNote}, timeout: ${timeoutStr}`
+      );
+
+      const msg = await client.waitForReply({
+        topic,
+        sinceTime,
+        timeoutMs,
+      });
+
+      if (!msg) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `No reply received within ${timeoutStr}${contextNote}. Timed out.`,
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Reply received!\n\n${formatMessage(msg)}`,
+          },
+        ],
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{ type: "text" as const, text: `Error: ${message}` }],
+        isError: true,
+      };
+    }
   }
 );
 

@@ -277,6 +277,77 @@ export class NtfyClient {
   }
 
   /**
+   * Subscribe to a topic via SSE and wait for the next incoming message.
+   * Blocks until a new message arrives (with timestamp > sinceTime) or timeout elapses.
+   */
+  async waitForReply(options: {
+    topic?: string;
+    sinceTime: number; // unix seconds — ignore messages older than this
+    timeoutMs: number;
+  }): Promise<NtfyMessage | null> {
+    const topic = this.resolveTopic(options.topic);
+    // Use sinceTime so we only get messages that arrive after we started waiting
+    const params = new URLSearchParams({ since: String(options.sinceTime) });
+    const url = `${this.baseUrl}/${encodeURIComponent(topic)}/json?${params.toString()}`;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), options.timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        headers: this.getAuthHeaders(),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ntfy subscribe failed (${response.status}): ${errorText}`);
+      }
+
+      if (!response.body) {
+        throw new Error("ntfy subscribe: no response body");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const msg = JSON.parse(trimmed) as NtfyMessage;
+            if (msg.event === "message" && msg.time >= options.sinceTime) {
+              clearTimeout(timer);
+              reader.cancel();
+              return msg;
+            }
+          } catch {
+            // keepalive or open events — ignore
+          }
+        }
+      }
+
+      return null; // stream ended without a message (timeout aborted it)
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return null; // timed out
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
    * Get the default topic.
    */
   getDefaultTopic(): string | undefined {
